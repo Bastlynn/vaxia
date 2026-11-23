@@ -25,6 +25,21 @@ tests/run-tests.sh --group knownbug         # tests that pin known bugs (they fa
 
 The site is browsable at http://localhost:8077 (admin / admin), bound to 127.0.0.1 only.
 
+## CircleCI
+
+`.circleci/config.yml` runs the same Docker stack on CircleCI machine executors:
+setup (checkout, cached contrib download) → smoke (build the PHP 7.4 image, lint) →
+install (`docker/install.sh`, harness guard) → test boxes (test files split by
+timing data, one PHPUnit run per file, junit results) plus a known-bug report and
+a collated `php-errors` log.
+
+Pick a run with the `RUN` pipeline parameter (Trigger Pipeline > Add Parameter):
+`PULLREQUEST` (default), `FULLSET`, `KNOWNBUG`, `SMOKE`, or `DEBUG` with `GROUP`
+(a module's `@group`, e.g. `strikes`) and `BOXES`.
+
+The known-bug job doesn't fail on the known bugs. It fails when one of them
+starts passing, so a fixed bug's test gets moved out of `@group knownbug`.
+
 ## How it works
 
 Tests are black-box, so they can be pointed at the Drupal 10/11 rebuild:
