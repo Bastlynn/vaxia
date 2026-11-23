@@ -1,0 +1,67 @@
+# drupal.org projects (7.x) needed by the custom modules. Patched copies of
+# entityreference, imagefield_crop, spoiler, comment_goodness come from patched_modules/.
+bbcode
+character_sheet
+node_clone
+computed_field
+cnr
+ctools
+date 7.x-2.14
+date_ical
+dice_roller
+entity
+entityreference_view_widget
+features
+field_collection
+field_collection_table
+field_group
+fivestar
+votingapi
+flag
+freelinking
+fullcalendar
+libraries
+gmap
+location
+# Production: 7.x-4.0-rc3 (5.x changes the take/results flow quiz_feedback themes).
+quiz 7.x-4.0-rc3
+# quiz_rules is gone from drupal.org; tests/fixtures/modules/quiz_rules stubs its event.
+quiz_rules
+nodereferrer
+payment
+paypal_payment
+references
+role_expire
+rules
+rules_block_user
+rules_list_conditions
+strongarm
+user_badges
+user_stats
+views
+views_bulk_operations
+views_php
+views_rules
+views_timelinejs
+# 3.x API: components use 'mandatory' (4.x renamed it), types enabled via webform_node_types.
+webform 7.x-3.31
+# 1.7 assumes webform 4 (component 'required'); 1.6 matches webform 3.
+webform_rules 7.x-1.6
+# 7.x-1.x API (workflow_features_revert, workflow_get_workflow_states_by_wid).
+# 1.2, not 1.1: VAXIA reads $node->workflow / workflow_state_name, which 1.1's
+# inverted node_load check never sets. 1.2's features importer drops the
+# transitions it creates; fixtures/prod-workflow-transitions.php recreates them.
+workflow 7.x-1.2
+token
+currency
+advanced_help_hint
+chr
+payment_donation
+# Not declared as a dependency, but ban_players rules call smart_ip_get_location().
+smart_ip
+# Not declared, but views (SH activity, departments, players, ...) and
+# storyhost_duties query its pm_index / pm_message tables. Production: 7.x-1.4.
+privatemsg 7.x-1.4
+# Not declared, but comment_revisions_diff needs both (production versions).
+comment_revisions 7.x-1.0-beta1
+diff 7.x-3.2

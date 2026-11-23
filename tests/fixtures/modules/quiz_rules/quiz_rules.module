@@ -1,0 +1,23 @@
+<?php
+
+/**
+ * @file
+ * Test stub for the quiz_rules project, which is no longer downloadable.
+ * Provides only the event VAXIA's default rules react to.
+ */
+
+/**
+ * Implements hook_rules_event_info().
+ */
+function quiz_rules_rules_event_info() {
+  return array(
+    'quiz_rules_quiz_passed' => array(
+      'label' => t('A user passed a quiz'),
+      'group' => t('Quiz'),
+      'variables' => array(
+        'node' => array('type' => 'node', 'label' => t('Quiz')),
+        'user' => array('type' => 'user', 'label' => t('User')),
+      ),
+    ),
+  );
+}

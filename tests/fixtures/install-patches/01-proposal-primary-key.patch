@@ -1,0 +1,11 @@
+--- a/rpg/proposal/proposal.install
++++ b/rpg/proposal/proposal.install
+@@ -24,7 +24,7 @@
+         'description' => 'The election webform used for this election.',
+       ),
+     ),
+-    'primary key' => array('eid'),
++    'primary key' => array('nid', 'uid'),
+   );
+   return $schema;
+ }

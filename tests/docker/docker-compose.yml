@@ -1,0 +1,36 @@
+# Usage (from tests/docker): docker compose up -d --build ; ./install.sh ; ./run-tests.sh
+name: vaxia-test
+services:
+  db:
+    image: mariadb:10.6
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: vaxia
+      MARIADB_USER: vaxia
+      MARIADB_PASSWORD: vaxia
+    command: --max_allowed_packet=64M --innodb-buffer-pool-size=256M
+  web:
+    build: .
+    depends_on: [db]
+    ports: ["127.0.0.1:8077:80"]  # admin/admin: keep it off the network
+    volumes:
+      - ../.build/drupal:/var/www/html
+      - ../.build/contrib:/var/www/html/sites/all/modules/contrib
+      - ../../patched_modules:/var/www/html/sites/all/modules/patched
+      - ../fixtures/modules:/var/www/html/sites/all/modules/test_stubs
+      - ../../administration:/var/www/html/sites/all/modules/vaxia/administration
+      - ../../characters:/var/www/html/sites/all/modules/vaxia/characters
+      - ../../chatrooms:/var/www/html/sites/all/modules/vaxia/chatrooms
+      - ../../events:/var/www/html/sites/all/modules/vaxia/events
+      - ../../items:/var/www/html/sites/all/modules/vaxia/items
+      - ../../npcs:/var/www/html/sites/all/modules/vaxia/npcs
+      - ../../players:/var/www/html/sites/all/modules/vaxia/players
+      - ../../rpg:/var/www/html/sites/all/modules/vaxia/rpg
+      - ../../storyhosts:/var/www/html/sites/all/modules/vaxia/storyhosts
+      - ../../ui:/var/www/html/sites/all/modules/vaxia/ui
+      - ../../vaxia:/var/www/html/sites/all/modules/vaxia/vaxia
+      - ../../wiki:/var/www/html/sites/all/modules/vaxia/wiki
+      - ../.build/themes:/var/www/html/sites/all/themes/contrib
+      - ../../vaxia_theme:/var/www/html/sites/all/themes/vaxia_theme
+      - ../../theming:/var/www/html/sites/all/themes/theming
+      - ..:/var/www/tests

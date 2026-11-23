@@ -1,0 +1,6 @@
+name = Quiz Rules (test stub)
+description = Stand-in for the vanished quiz_rules project. Declares the quiz_rules_quiz_passed event the VAXIA rules listen on.
+core = 7.x
+package = Testing
+dependencies[] = rules
+dependencies[] = quiz
