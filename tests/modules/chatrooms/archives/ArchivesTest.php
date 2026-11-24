@@ -154,6 +154,10 @@ class ArchivesTest extends VaxiaTestCase {
    */
   public function testSearchTextIsNotRunAsACommand() {
     $this->configure();
+    // Guard: the probe only proves anything if the web server can write files
+    // there (archiving writes to the same directory).
+    $this->oldRoomPost('Guard post');
+    $this->assertContains('Archived 1 comments.', $this->archiveAll(), 'Web server can write to the files directory');
     $probe = DRUPAL_ROOT . '/' . $this->site->publicFilesPath() . '/' . self::PROBE;
     $this->search('$(touch ' . $probe . ')');
     $this->anonymous();

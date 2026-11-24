@@ -66,6 +66,14 @@ commands:
                         docker compose logs
                         exit 1
                     fi
+                    # Drupal's files directory comes back from the workspace without
+                    # the permissions install.sh set; Apache (www-data) must be able
+                    # to write there (archives, uploads, the archive search probe).
+                    docker compose exec -T web bash -c '
+                        mkdir -p sites/default/files/private
+                        chown -R www-data:www-data sites/default/files
+                        chmod -R ug+rwX sites/default/files'
+                    docker compose exec -T -u www-data web touch sites/default/files/.ci-write-check
                     # The database starts empty (tests restore the baseline per class).
                     # Load it now so the site answers, then check Apache serves Drupal.
                     docker compose exec -T web mysql -h db -uvaxia -pvaxia vaxia < ../.build/baseline.sql
