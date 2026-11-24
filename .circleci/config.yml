@@ -50,18 +50,33 @@ commands:
                 command: |
                     cd tests/docker
                     docker compose up -d --no-build
-                    # Wait for MariaDB and Apache. Ping MariaDB over TCP from the web
-                    # container: on first start its entrypoint runs a socket-only
-                    # temporary server, so a ping inside the db container succeeds
-                    # before the network port is open.
+                    # Wait for MariaDB. Ping over TCP from the web container: on
+                    # first start its entrypoint runs a socket-only temporary
+                    # server, so a ping inside the db container succeeds before
+                    # the network port is open.
+                    up=0
                     for i in $(seq 1 90); do
-                        if docker compose exec -T web mysqladmin ping -h db -uvaxia -pvaxia --silent >/dev/null 2>&1 \
-                            && docker compose exec -T web curl -fsS -o /dev/null http://localhost/user/login; then
+                        if docker compose exec -T web mysqladmin ping -h db -uvaxia -pvaxia --silent >/dev/null 2>&1; then
+                            up=1
+                            break
+                        fi
+                        sleep 2
+                    done
+                    if [ "$up" != 1 ]; then
+                        docker compose logs
+                        exit 1
+                    fi
+                    # The database starts empty (tests restore the baseline per class).
+                    # Load it now so the site answers, then check Apache serves Drupal.
+                    docker compose exec -T web mysql -h db -uvaxia -pvaxia vaxia < ../.build/baseline.sql
+                    for i in $(seq 1 30); do
+                        if docker compose exec -T web curl -fsS -o /dev/null http://localhost/user/login; then
                             echo "Stack is up."
                             exit 0
                         fi
                         sleep 2
                     done
+                    docker compose exec -T web curl -sS http://localhost/user/login | head -40
                     docker compose logs
                     exit 1
             # Timings in CircleCI are keyed on the junit "file" paths, which are
