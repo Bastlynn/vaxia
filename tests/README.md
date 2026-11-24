@@ -25,6 +25,21 @@ tests/run-tests.sh --group knownbug         # tests that pin known bugs (they fa
 
 The site is browsable at http://localhost:8077 (admin / admin), bound to 127.0.0.1 only.
 
+## Coverage
+
+```
+tests/run-coverage.sh                      # whole suite + known-bug tests (~1 hour)
+tests/run-coverage.sh modules/rpg/strikes  # one module
+```
+
+The code under test runs in Apache, so PHPUnit's own coverage can't see it.
+`run-coverage.sh` restarts the web container with Xdebug in coverage mode, and
+`coverage/prepend.php` (loaded into every PHP process) records which VAXIA lines
+run. `coverage/report.php` then analyses every custom and patched module file
+for executable lines and writes `tests/.build/coverage/report/` (`modules.txt`,
+`summary.txt`, `clover.xml`, `html/`). Features exports (rules, views, fields)
+are data and are left out. Normal runs are unaffected: Xdebug is off by default.
+
 ## CircleCI
 
 `.circleci/config.yml` runs the same Docker stack on CircleCI machine executors:
@@ -36,6 +51,9 @@ a collated `php-errors` log.
 Pick a run with the `RUN` pipeline parameter (Trigger Pipeline > Add Parameter):
 `PULLREQUEST` (default), `FULLSET`, `KNOWNBUG`, `SMOKE`, or `DEBUG` with `GROUP`
 (a module's `@group`, e.g. `strikes`) and `BOXES`.
+
+`COVERAGE` runs everything with line coverage and stores the report as the
+`coverage/` artifact (`html/index.html`, per-module `modules.txt`).
 
 The known-bug job doesn't fail on the known bugs. It fails when one of them
 starts passing, so a fixed bug's test gets moved out of `@group knownbug`.

@@ -14,5 +14,11 @@ RUN mkdir /opt/tools && cd /opt/tools \
   && ln -s /opt/tools/vendor/bin/drush /usr/local/bin/drush \
   && ln -s /opt/tools/vendor/bin/phpunit /usr/local/bin/phpunit
 RUN echo "memory_limit=1G\nmax_execution_time=0\nerror_reporting=E_ALL & ~E_DEPRECATED & ~E_STRICT\nsendmail_path=/bin/true" > /usr/local/etc/php/conf.d/vaxia.ini
+# Line coverage (tests/run-coverage.sh). Xdebug is off unless the container
+# runs with XDEBUG_MODE=coverage (run-coverage.sh restarts it that way); the
+# prepend collects VAXIA lines only while tests/.build/coverage/ON exists.
+# (pcov segfaults on this PHP 7.4 build on ARM64.)
+RUN pecl install xdebug-3.1.6 && docker-php-ext-enable xdebug \
+  && printf 'xdebug.mode=off\nauto_prepend_file=/var/www/tests/coverage/prepend.php\n' > /usr/local/etc/php/conf.d/zz-coverage.ini
 ENV APACHE_DOCUMENT_ROOT=/var/www/html
 WORKDIR /var/www/html

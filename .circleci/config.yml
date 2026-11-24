@@ -16,7 +16,7 @@ parameters:
         type: enum
         description: "Which tests to run. Default: the pull request set."
         default: "PULLREQUEST"
-        enum: ["PULLREQUEST", "FULLSET", "KNOWNBUG", "SMOKE", "DEBUG"]
+        enum: ["PULLREQUEST", "FULLSET", "KNOWNBUG", "SMOKE", "DEBUG", "COVERAGE"]
     GROUP:
         type: string
         description: "PHPUnit group to run in DEBUG (a module name, e.g. strikes)."
@@ -38,6 +38,11 @@ commands:
     # Restores what install produced: Drupal, contrib, the baseline database
     # dump, and the web image, then starts the stack.
     start_stack:
+        parameters:
+            coverage:
+                description: "Collect line coverage (Xdebug, tests/coverage/prepend.php)."
+                default: false
+                type: boolean
         steps:
             - attach_workspace:
                 at: ~/
@@ -49,6 +54,13 @@ commands:
                 name: Start Docker Stack
                 command: |
                     cd tests/docker
+                    if [ "<< parameters.coverage >>" = true ]; then
+                        # Xdebug on, and the prepend collects while this flag exists.
+                        export XDEBUG_MODE=coverage
+                        mkdir -p ../.build/coverage/raw
+                        chmod -R 777 ../.build/coverage
+                        touch ../.build/coverage/ON
+                    fi
                     docker compose up -d --no-build
                     # Wait for MariaDB. Ping over TCP from the web container: on
                     # first start its entrypoint runs a socket-only temporary
@@ -95,6 +107,27 @@ commands:
                 command: |
                     sudo mkdir -p /var/www
                     sudo ln -sfn ~/project/tests /var/www/tests
+
+    # Keeps this box's coverage hits for collate_coverage (an empty folder
+    # when coverage is off, so the workspace path always exists).
+    save_coverage:
+        steps:
+            - run:
+                name: Save Coverage Hits
+                command: |
+                    BOX=tests/.build/coverage-boxes/$CIRCLE_JOB-$CIRCLE_NODE_INDEX
+                    mkdir -p "$BOX"
+                    touch "$BOX/.keep"
+                    rm -f tests/.build/coverage/ON
+                    if [ -d tests/.build/coverage/raw ]; then
+                        cp tests/.build/coverage/raw/*.ser "$BOX/" 2>/dev/null || true
+                    fi
+                    ls "$BOX" | wc -l
+                when: always
+            - persist_to_workspace:
+                root: ~/
+                paths:
+                    - project/tests/.build/coverage-boxes
 
 jobs:
 
@@ -243,9 +276,14 @@ jobs:
                 description: "Split by historical timing data instead of round robin."
                 default: true
                 type: boolean
+            coverage:
+                description: "Collect line coverage."
+                default: false
+                type: boolean
         parallelism: << parameters.parallel_boxes >>
         steps:
-            - start_stack
+            - start_stack:
+                coverage: << parameters.coverage >>
             - run:
                 name: Run Tests
                 no_output_timeout: 30m
@@ -304,6 +342,7 @@ jobs:
                 root: ~/
                 paths:
                     - project/tests/.build/ci-out
+            - save_coverage
 
     # Known bugs: the @group knownbug tests assert the intended behaviour and
     # fail today (tests/KNOWN-BUGS.md). This job reports them without failing
@@ -311,8 +350,14 @@ jobs:
     # the test out of the knownbug group and update KNOWN-BUGS.md).
     knownbug_report:
         executor: vaxia_machine
+        parameters:
+            coverage:
+                description: "Collect line coverage."
+                default: false
+                type: boolean
         steps:
-            - start_stack
+            - start_stack:
+                coverage: << parameters.coverage >>
             - run:
                 name: Run Known Bug Tests
                 no_output_timeout: 30m
@@ -342,6 +387,7 @@ jobs:
             - store_artifacts:
                 path: tests/.build/ci-out/knownbug
                 destination: knownbug
+            - save_coverage
 
     # Collate: gather every box's PHP notices into one log, the list of
     # deprecations / warnings to fix before the PHP 8 upgrade.
@@ -361,6 +407,28 @@ jobs:
             - store_artifacts:
                 path: ~/collated
                 destination: collated
+
+    # Coverage: merge every box's hits into one report of VAXIA code
+    # (tests/coverage/report.php): html/, clover.xml, per-module modules.txt.
+    collate_coverage:
+        executor: vaxia_machine
+        steps:
+            - attach_workspace:
+                at: ~/
+            - run:
+                name: Load Web Image
+                command: |
+                    gunzip -c ~/images/vaxia-test-web.tar.gz | docker load
+            - run:
+                name: Build Coverage Report
+                command: |
+                    cd tests/docker
+                    find ../.build/coverage-boxes -name '*.ser' | wc -l
+                    docker compose run --rm --no-deps -T web php /var/www/tests/coverage/report.php \
+                        /var/www/tests/.build/coverage-boxes /var/www/tests/.build/coverage/report
+            - store_artifacts:
+                path: tests/.build/coverage/report
+                destination: coverage
 
 workflows:
 
@@ -466,3 +534,33 @@ workflows:
                 parallel_boxes: << pipeline.parameters.BOXES >>
                 requires:
                     - install
+
+    # Line coverage of VAXIA code for the whole suite (known-bug tests too):
+    # artifacts "coverage/html/index.html" and "coverage/modules.txt".
+    vaxia_coverage_test:
+        when:
+            equal: [COVERAGE, << pipeline.parameters.RUN >>]
+        jobs:
+            - setup
+            - smoke:
+                requires:
+                    - setup
+            - install:
+                requires:
+                    - smoke
+            - test_runner:
+                name: test_runner_coverage
+                parallel_boxes: 8
+                timing_balance: false
+                coverage: true
+                requires:
+                    - install
+            - knownbug_report:
+                name: knownbug_coverage
+                coverage: true
+                requires:
+                    - install
+            - collate_coverage:
+                requires:
+                    - test_runner_coverage
+                    - knownbug_coverage
