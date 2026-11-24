@@ -50,9 +50,12 @@ commands:
                 command: |
                     cd tests/docker
                     docker compose up -d --no-build
-                    # Wait for MariaDB and Apache.
-                    for i in $(seq 1 60); do
-                        if docker compose exec -T db mysqladmin ping -uroot -proot --silent >/dev/null 2>&1 \
+                    # Wait for MariaDB and Apache. Ping MariaDB over TCP from the web
+                    # container: on first start its entrypoint runs a socket-only
+                    # temporary server, so a ping inside the db container succeeds
+                    # before the network port is open.
+                    for i in $(seq 1 90); do
+                        if docker compose exec -T web mysqladmin ping -h db -uvaxia -pvaxia --silent >/dev/null 2>&1 \
                             && docker compose exec -T web curl -fsS -o /dev/null http://localhost/user/login; then
                             echo "Stack is up."
                             exit 0
@@ -163,10 +166,13 @@ jobs:
                 command: |
                     cd tests/docker
                     docker compose up -d --no-build
-                    for i in $(seq 1 60); do
-                        docker compose exec -T db mysqladmin ping -uroot -proot --silent >/dev/null 2>&1 && exit 0
+                    # Ping over TCP from the web container (see start_stack): the db
+                    # container's socket answers before its network port is open.
+                    for i in $(seq 1 90); do
+                        docker compose exec -T web mysqladmin ping -h db -uvaxia -pvaxia --silent >/dev/null 2>&1 && exit 0
                         sleep 2
                     done
+                    docker compose logs db
                     exit 1
             - run:
                 name: Install Drupal and VAXIA
