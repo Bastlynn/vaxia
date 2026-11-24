@@ -237,6 +237,8 @@ PHP notices/warnings seen on pages during a run are appended to
   has `access callback => TRUE` and never checks room access, so anyone,
   including anonymous visitors, can read any room's posts. That includes locked,
   mature, and personal rooms the normal page denies.
+41. **Nobody but user 1 can open the RPG admin section.** `admin/rpg` requires
+  "administer rpg settings", a permission no module defines.
 - Note: presence uses two windows. Loading a room prunes entries older than
   1 minute (`rpg_chat_cron()` runs on every node load), while the user list
   allows 15 minutes. In practice you're "in the room" for about a minute after
@@ -244,14 +246,14 @@ PHP notices/warnings seen on pages during a run are appended to
 
 ## rpg_election
 
-41. **The yearly election never starts.** On election day, cron runs
+42. **The yearly election never starts.** On election day, cron runs
   `DELETE FROM {users_roles} WHERE rid = :rid` with an extra `:uid` argument
   (from an undefined `$winner`), which throws a PDOException. `election_day` has
   already been set to today, so the election is skipped until next year. Only
   "Hold an election off-cycle" works.
-42. **No election forum configured = no election.** The proposal is saved with
+43. **No election forum configured = no election.** The proposal is saved with
   forum tid `''`, which strict SQL rejects, so node_save fails.
-43. **Opening and closing elections print PHP notices.** `_rpg_election_trigger_election()`
+44. **Opening and closing elections print PHP notices.** `_rpg_election_trigger_election()`
   assigns to an undefined `$node` ("Creating default object", fatal on PHP 8).
   The results code reads undefined indexes. `close_election` is invoked with an
   undefined `$wins`, and `$election->winners` keeps only the last position's
@@ -260,45 +262,45 @@ PHP notices/warnings seen on pages during a run are appended to
   vote-count buckets instead of sorting by count descending, so when a candidate
   leads two positions, seat assignment order may not follow vote counts. The
   no-candidates branch also reads `$alphabet[$i]` with `$i` undefined.
-44. **Warning on every user profile edit:** `Invalid argument supplied for foreach()`
+45. **Warning on every user profile edit:** `Invalid argument supplied for foreach()`
    in `rpg_election_form_user_profile_form_alter()` (line 185). Users see it.
 
 ## scene_record
 
-45. **The scene table has no column headings.** `theme('table')` gets `'headers'`
+46. **The scene table has no column headings.** `theme('table')` gets `'headers'`
   instead of `'header'`.
-46. **PHP notices.** The new-scene form reads `$scene` before it's set. Posts with
+47. **PHP notices.** The new-scene form reads `$scene` before it's set. Posts with
   no character (OOC) make the results code read `->title` and `->nid` of `FALSE`.
 - Untested (from reading): the "scene ruler" form is empty (no fields), and it
   only shows to staff on submitted scenes. The ruling UI does nothing.
 
 ## silver
 
-47. **Silver-removal message shows a raw placeholder:** "%add_silver silver has
+48. **Silver-removal message shows a raw placeholder:** "%add_silver silver has
   been removed" (the code passes `@add_silver`).
-48. **Refused-investment message shows a raw placeholder:** "Unable to invest
+49. **Refused-investment message shows a raw placeholder:** "Unable to invest
   @invest" (the code passes `$invest`).
 
 ## strikes
 
-49. **The Yellow strike confirmation omits the player's name.** Its message uses
+50. **The Yellow strike confirmation omits the player's name.** Its message uses
   `[strike-user:name]`, a variable only the Red rule defines.
 
 ## suspend_players
 
-50. **Suspensions never record a ban date.** check_reds' PHP field returns the new
+51. **Suspensions never record a ban date.** check_reds' PHP field returns the new
   ban as `"12/22/2026"`, and Entity API rejects it for `field_banned_until` (it
   wants a timestamp). The rule logs the error and carries on: the player is
   blocked and stripped of roles, but `banned_until` stays empty, so it's
   effectively a permanent ban.
-51. **Suspension message is blank.** "has been suspended for  months thru ." The
+52. **Suspension message is blank.** "has been suspended for  months thru ." The
   `[new-ban-months]` and `[new-ban]` tokens render empty (the red count works).
   If they rendered, a first Red would say "0 months" (`([count]-1)*3`) while the
   ban is 1 month.
-52. **The 2nd Yellow in a year is upgraded to Red, not the 3rd.** check_yellows
+53. **The 2nd Yellow in a year is upgraded to Red, not the 3rd.** check_yellows
   drops counts below 2, and the count includes the strike just saved. Three
   Yellows produce two Reds.
-53. **Suspensions never lift on their own (in this environment).** "Suspend -
+54. **Suspensions never lift on their own (in this environment).** "Suspend -
   Unblock a suspended user" listens for user_stats_day_older, fired by cron.
   With the current Entity API the event fails: its variables are typed
   `'number'`, which isn't a Rules type, and I believe the argument handlers use
@@ -308,26 +310,26 @@ PHP notices/warnings seen on pages during a run are appended to
 
 ## vacation
 
-54. **"Return from vacation" is unreachable.** The fieldset only renders for users
+55. **"Return from vacation" is unreachable.** The fieldset only renders for users
    with a `can go on vacation` role, and for them the form alter ends any current
    vacation while building the page. A user on vacation (player + vacation mode)
    gets no form at all and must wait for cron.
-55. **"longer (resign)" does nothing.** `_vacation_go_on_vacation()` uses an undefined
+56. **"longer (resign)" does nothing.** `_vacation_go_on_vacation()` uses an undefined
    `$account`, so no roles are removed and no vacation is recorded.
-56. **Default duration is "3 days", not "1 week".** `'#default_option'` isn't a Form API key.
-57. **Every "Go on vacation" prints a PHP warning.** `_vacation_create_vacation()` ends
+57. **Default duration is "3 days", not "1 week".** `'#default_option'` isn't a Form API key.
+58. **Every "Go on vacation" prints a PHP warning.** `_vacation_create_vacation()` ends
    with `array_merge($form, …)` on an undefined `$form`.
-58. **Missed cron = vacation never ends.** Cron only ends vacations whose end falls
+59. **Missed cron = vacation never ends.** Cron only ends vacations whose end falls
     inside today. If cron skips that day, the user's roles are never returned.
-59. Untested (from reading; no rule or page uses it): the Rules action "Put a
+60. Untested (from reading; no rule or page uses it): the Rules action "Put a
     user on vacation" (`vacation_rules_on()`) reads undefined `$account` and
     `$end`.
-60. `_vacation_get_vacations_by_uid()` iterates a single `fetchObject()` result.
+61. `_vacation_get_vacations_by_uid()` iterates a single `fetchObject()` result.
     It's unused, so there's no test.
 
 ## play_suggestions
 
-61. **One click posts two suggestions (or none).** The validate handler calls the
+62. **One click posts two suggestions (or none).** The validate handler calls the
   submit handler ("HACK"), then Drupal runs the submit handler again. The room
   pick is `rand(0, $count)` over `$count` rooms, so some picks find no room and
   post nothing. (Five clicks posted eight suggestions in a test run.)
@@ -336,45 +338,45 @@ PHP notices/warnings seen on pages during a run are appended to
 
 ## top_tens
 
-62. **Long XP types crash "Add XP".** Flavor types are free text in the settings,
+63. **Long XP types crash "Add XP".** Flavor types are free text in the settings,
   but `vaxia_xp_type_totals.type` is `varchar(15)`: awarding a longer type is a
   PDOException and the XP is lost.
 
 ## justice_form
 
-63. **Rolls never reduce the crime's PP.** The PP a roll generates is read as
+64. **Rolls never reduce the crime's PP.** The PP a roll generates is read as
   `$ruling[7]`, but the dice ruler returns named keys (`'pp'`): every roll
   "generated  towards reducing the crime PP" and the full punishment is always
   due (plus an "Undefined offset: 7" notice per roll).
-64. **"A good reputation raised the Tier level"** when it lowered it.
-65. **The time punishment has no unit.** The tier's days/weeks/months setting is
+65. **"A good reputation raised the Tier level"** when it lowered it.
+66. **The time punishment has no unit.** The tier's days/weeks/months setting is
   read but never printed ("OR 10 time.").
 
 ## storyhost_duties
 
-66. **Late evaluations count as prompt.** The 3-day check compares
+67. **Late evaluations count as prompt.** The 3-day check compares
   `workflow_node_history.stamp` (Unix time) with
   `DATE_ADD(FROM_UNIXTIME(created), INTERVAL 3 DAY)` (a DATETIME, compared as
   20261123...): always true.
-67. **Lapsed storyhosts are never retired.** "Remove SH roles if Neglect Duties"
+68. **Lapsed storyhosts are never retired.** "Remove SH roles if Neglect Duties"
   and "... if AWOL" listen for `user_stats_day_older` (broken under Rules 2, see
   suspend_players).
 - "Replies on SH Requests" counts forum terms 10 and 11, production content ids.
 
 ## storyhost_renewal
 
-68. **Storyhost powers never expire.** "SH Renewal - Expire Storyhost" listens
+69. **Storyhost powers never expire.** "SH Renewal - Expire Storyhost" listens
   for `user_stats_day_older` (see suspend_players).
 
 ## sh_test
 
-69. **ASH 2 / ASH 3 eligibility warnings are inverted.** They check "not in the
+70. **ASH 2 / ASH 3 eligibility warnings are inverted.** They check "not in the
   previous ASH role OR has run enough sessions", so an ASH who has run their
   sessions is told they're not eligible, and one who hasn't isn't warned.
-70. **A session report with no characters prints a warning**
+71. **A session report with no characters prints a warning**
   (`sh_test_session_counts()` loops over an unset field) to anyone allowed to
   see whether it qualifies.
-71. **"Session requirements" doesn't start collapsed:** `'#collpased'` (sic).
+72. **"Session requirements" doesn't start collapsed:** `'#collpased'` (sic).
 - Untested (from reading): `sh_test_check_last_run()` and
   `sh_test_check_date_last_run()` query a `{nodes}` table that doesn't exist
   (and the first lacks a space before ORDER BY); no exported rule calls them.
@@ -385,32 +387,38 @@ PHP notices/warnings seen on pages during a run are appended to
 
 ## site_events
 
-72. **Reminders are for the day after tomorrow.** They say "tomorrow", but the
+73. **Reminders are for the day after tomorrow.** They say "tomorrow", but the
   window starts at `strtotime('+2 day')`; an event tomorrow gets no reminder
   that night.
-73. **Cancelled events still send reminders.** The reminder query ignores the
+74. **Cancelled events still send reminders.** The reminder query ignores the
   event's workflow state.
 
 ## comment_revisions_diff
 
-74. **SECURITY: anyone can read every post's edit history.** The access callback
+75. **SECURITY: anyone can read every post's edit history.** The access callback
   starts with a leftover `return TRUE;`, so anonymous visitors and players can
   open `comment/N/revisions` and compare revisions: whatever was edited out of a
   post is public.
 
 ## dice_helper
 
-75. **The dice proof page divides by zero with no d100 rolls yet** (a warning
+76. **The dice proof page divides by zero with no d100 rolls yet** (a warning
   today, fatal on PHP 8).
 
 ## dice_ruler
 
-76. **Every ruling prints undefined-index notices.** The rulings read "add diff"
+77. **Every ruling prints undefined-index notices.** The rulings read "add diff"
   values (`two_trait_add_diff_a_N`, `combat_add_diff_*`, ...) the form never has.
+78. **Text typed as a might is ruled as 1.** The multi-action penalty is
+  subtracted before the numeric check, so "lots" becomes 0, then 1, with a
+  "non-numeric value" notice, instead of "Not all values given were numeric".
+79. **The player advisor prints PHP notices.** Its weapon class default reads an
+  undefined `$first`, and a first attack that misses leaves `$last_damage`
+  undefined.
 
 ## site_wiki
 
-77. **Auto-links eat the next character.** The link replaces the whole match,
+80. **Auto-links eat the next character.** The link replaces the whole match,
   including the character after the title: "to Rivermoot." becomes "to
   Rivermoot " (the period is lost).
 - `site_wiki_menu_alter()` is written as a node-access hook (`$node, $op,
@@ -422,7 +430,7 @@ PHP notices/warnings seen on pages during a run are appended to
 
 ## anon_mailer
 
-78. **SECURITY (critical): anonymous remote code execution.** The "Grievance
+81. **SECURITY (critical): anonymous remote code execution.** The "Grievance
   Posting" and "Grievance Posting - Incomplete" rules paste
   `[data:grievance_names-value]` (a free-text webform field) into `php_eval`
   code inside double quotes. The mailer (webform 9368) is open to anonymous
@@ -438,17 +446,17 @@ PHP notices/warnings seen on pages during a run are appended to
 
 ## vaxia_players
 
-79. **New players' "XP over time" never starts.** "Add XP to total User XP" adds
+82. **New players' "XP over time" never starts.** "Add XP to total User XP" adds
   with data_calc, which refuses an empty input ("The variable or parameter
   input_1 is empty"). A player with no total yet never gets one, so SH
   eligibility (over 39) never triggers until an admin runs "Recalculate Earned
   XP" (sh_test).
-80. **The underage mail's subject has no name.** It uses `[user:name]`, which a
+83. **The underage mail's subject has no name.** It uses `[user:name]`, which a
   user_insert rule doesn't have: "Account details for  at Vaxia (NOT
   approved)".
-81. **Inactive players are never retired.** "Retire inactive user account"
+84. **Inactive players are never retired.** "Retire inactive user account"
   listens for `user_stats_day_older` (see suspend_players).
-82. **Accounts created as players also get "new account".** "Set new account
+85. **Accounts created as players also get "new account".** "Set new account
   role on new accounts" checks NOT (new account AND player); it means OR.
 - The age and terms boxes are required on registration, so an under-13 sign-up
   is refused outright; the "User is under minimal age" rule only runs for
@@ -456,34 +464,42 @@ PHP notices/warnings seen on pages during a run are appended to
 
 ## vaxia_rpg
 
-83. **Blocked players get the cold storage mail twice.** The cold storage rule
+86. **Blocked players get the cold storage mail twice.** The cold storage rule
   saves the account again, firing "user was blocked" a second time.
-84. **The banned-IP login alert never fires.** The rule passes the IP to the
+87. **The banned-IP login alert never fires.** The rule passes the IP to the
   view loop as PHP (`<?php echo ip_address(); ?>`), which isn't evaluated
   there; the view finds the banned player when given the real IP.
 
 ## vaxia_scene
 
-85. **New scenes don't land on the Workflow tab.** "Creating scene move to
+88. **New scenes don't land on the Workflow tab.** "Creating scene move to
   workflow" redirects there, but vaxia_players' "Node redirect after
   creation" also lists scenes and redirects to node/N afterwards.
 
 ## vaxia_characters
 
-86. **PHP notices on new character sheets.** Viewing a sheet still in
+89. **PHP notices on new character sheets.** Viewing a sheet still in
   "(creation)" reads `$node->workflow_state_name`, which it doesn't have; the
   edit form reads the owner's `field_xp_over_time['und'][0]` without checking
   it's set (every player without an XP total yet).
 
 ## vaxia_wiki
 
-87. **Pages flagged for deletion never reach the review list.** Flagging
+90. **Pages flagged for deletion never reach the review list.** Flagging
   unpublishes the page, and the "Flagged delete" list shows published pages
   only. (Any player may flag, so any player can unpublish any wiki page,
   with no list for staff to find it on.)
 
 ## vaxia (core)
 
+91. **"Earned N historical xp." shows the spent XP**, not the XP earned
+  (`_vaxia_xp_display()` passes `$spent`).
+92. **RXP transfers print a PHP notice.** The log message uses `$user->name`
+  without `global $user`, so it also reads "by .".
+- Untested (from reading): `_vaxia_dice_roller_submit_sh()` starts with a
+  leftover `echo print_r($submitted_rolls, 1);`. Every storyhost roll prints
+  the raw array, into the body of the redirect after posting, so it isn't
+  seen in a browser (it would break any non-redirecting caller).
 - Untested (from reading): `_vaxia_comment_add_kxp_submit()` invokes
   `vaxia_gain_xp` with five arguments (player, character, room, amount, type)
   for an event declared with four, so the amount and type are shifted.

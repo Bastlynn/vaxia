@@ -71,9 +71,18 @@ foreach ($files as $file) {
     fwrite(STDERR, "Skipping $file: " . $e->getMessage() . "\n");
     continue;
   }
+  // Xdebug reports a multi-line statement (an array literal, a long call) on
+  // one of its lines only; the analyser groups the lines of each statement
+  // into a branch. A branch with any line run counts as covered.
+  $hit_branches = array();
+  foreach ($executable as $line => $branch) {
+    if (isset($hits[$file][$line])) {
+      $hit_branches[$branch] = TRUE;
+    }
+  }
   $lines = array();
-  foreach (array_keys($executable) as $line) {
-    $lines[$line] = isset($hits[$file][$line]) ? 1 : -1;
+  foreach ($executable as $line => $branch) {
+    $lines[$line] = isset($hit_branches[$branch]) ? 1 : -1;
   }
   if ($lines) {
     $line_data[$file] = $lines;

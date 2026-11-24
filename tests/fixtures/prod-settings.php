@@ -61,3 +61,22 @@ foreach (array(
   variable_set($name, $value);
 }
 variable_set('vaxia_public_char_fields', "field_description\nfield_age_app\nfield_sex\nfield_race\nfield_sirian_species\nfield_vaxia_species\nfield_other_species\nfield_appearance\nfield_charisma\nfield_presence\nfield_public_information\nfield_sh_public_information\nfield_achivements\nfield_personal_room");
+
+// XP settings (2017 backup): KXP per post and conversion, and HXP transfers
+// (75% of spent XP, no cap, the old sheet goes to xp_transferred = 23).
+foreach (array(
+  'vaxia_display_dice' => '6',
+  'vaxia_kxp_per_words' => '20',
+  'vaxia_kxp_ratio' => '70',
+  'vaxia_max_kxp_post' => '10',
+  'vaxia_transfer_cap' => '300',
+  'vaxia_transfer_cap_on' => 0,
+  'vaxia_transfer_percentage' => '0.75',
+  'vaxia_transfer_workflow' => '23',
+  // New sheets: 300 points, checked while in draft (state 2) with no XP.
+  'vaxia_starting_points' => '300',
+  'vaxia_starting_econ' => '25',
+  'vaxia_draft_workflow' => '2',
+) as $name => $value) {
+  variable_set($name, $value);
+}

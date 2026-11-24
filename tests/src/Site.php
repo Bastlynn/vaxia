@@ -361,6 +361,24 @@ class Site {
   }
 
   /**
+   * A weapon class (weapon_category term): damage percentage and multi-action
+   * modifier, as production's "Heavy (75% / 10)". Returns the term id.
+   */
+  public function createWeaponClass($name, $percentage, $modifier, $weight = 0) {
+    $vocab = taxonomy_vocabulary_machine_name_load('weapon_category');
+    $term = (object) array(
+      'vid' => $vocab->vid,
+      'name' => $name,
+      'weight' => $weight,
+      'field_percentage' => array(LANGUAGE_NONE => array(array('value' => $percentage))),
+      'field_multi_action_mod' => array(LANGUAGE_NONE => array(array('value' => $modifier))),
+    );
+    taxonomy_term_save($term);
+    $this->resetCaches();
+    return (int) $term->tid;
+  }
+
+  /**
    * Term id by vocabulary and name, created if missing (vocabularies ship empty).
    */
   public function term($vocabulary, $name) {

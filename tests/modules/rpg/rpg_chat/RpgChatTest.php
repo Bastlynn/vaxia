@@ -177,15 +177,89 @@ class RpgChatTest extends VaxiaTestCase {
 
   /**
    * @group knownbug
-   * system/rpg_chat/NID has "access callback" TRUE and never checks room
-   * access: anyone (even anonymous) can read any room's posts through it.
+   * SECURITY: system/rpg_chat/NID has "access callback" TRUE and never checks
+   * room access. A locked room turns a non-member away from its page, but the
+   * refresh URL hands them every post.
    */
   public function testRefreshRespectsRoomAccess() {
-    $room = $this->site->createRoom();
-    $this->site->postComment($room, $this->chatter(), 'Secret plans');
-    $this->anonymous();
+    $member = $this->chatter();
+    $room = $this->site->createRoom(array('field_locked_to_users' => 1, 'field_users' => array(array('uid' => $member->uid))));
+    $this->site->postComment($room, $member, 'Secret plans');
+
+    $outsider = $this->chatter();
+    $this->login($outsider);
+    $this->get('node/' . $room->nid);
+    $this->assertStringNotContainsString('Secret plans', $this->content, 'The page turns them away');
+
     $this->get('system/rpg_chat/' . $room->nid);
     $this->assertStringNotContainsString('Secret plans', $this->content);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Settings, forms and markup.
+  // ---------------------------------------------------------------------------
+
+  public function testContentTypesHaveAChatSwitch() {
+    $this->login($this->superuser());
+    $this->get('admin/structure/types/manage/rpg-chatroom');
+    $this->assertText('RPG chat settings');
+    $this->assertSame(1, $this->xpath()->query('//input[@name="rpg_chat" and @checked]')->length, 'On for chat rooms');
+    $this->get('admin/structure/types/manage/page');
+    $this->assertSame(0, $this->xpath()->query('//input[@name="rpg_chat" and @checked]')->length, 'Off for pages');
+  }
+
+  public function testRoomEditFormHasChatSettings() {
+    $room = $this->site->createRoom();
+    $this->login($this->superuser());
+    $this->get('node/' . $room->nid . '/edit');
+    $this->assertText('RPG chat settings');
+  }
+
+  public function testRoomsAndPostsCarryChatMarkup() {
+    $room = $this->site->createRoom();
+    $this->site->postComment($room, $this->chatter(), 'Marked up');
+    $this->login($this->chatter());
+    $this->get('node/' . $room->nid);
+    $this->assertGreaterThan(0, $this->xpath()->query('//*[contains(concat(" ", @class, " "), " rpg-chat-node ")]')->length);
+    $this->assertGreaterThan(0, $this->xpath()->query('//*[contains(concat(" ", @class, " "), " rpg-chat-post ")][contains(., "Marked up")]')->length);
+  }
+
+  public function testPostEditsAlwaysKeepARevision() {
+    $room = $this->site->createRoom();
+    $post = $this->site->postComment($room, $this->chatter(), 'Original words');
+    $this->login($this->superuser());
+    $this->get('comment/' . $post->cid . '/edit');
+    $this->assertStatus(200);
+    // The "Create new revision" box is hidden and forced on.
+    $this->assertSame(0, $this->xpath()->query('//input[@type="checkbox" and @name="revision"]')->length);
+  }
+
+  public function testPlayersCannotOpenTheRpgAdminSection() {
+    $this->login($this->site->createUser(array('player')));
+    $this->get('admin/rpg');
+    $this->assertStatus(403);
+  }
+
+  /**
+   * @group knownbug
+   * admin/rpg requires "administer rpg settings", a permission no module
+   * defines: nobody but user 1 can open the RPG admin section (its settings
+   * pages have their own permissions).
+   */
+  public function testRpgAdminsCanOpenTheRpgAdminSection() {
+    $this->login($this->site->createUser(array(), array('administer rpg chat', 'access administration pages')));
+    $this->get('admin/rpg');
+    $this->assertStatus(200);
+  }
+
+  public function testDeletedRoomsReturnNoChat() {
+    $room = $this->site->createRoom();
+    $this->inSession($this->superuser(), function () use ($room) {
+      $this->submitForm('node/' . $room->nid . '/delete', array(), 'Delete');
+    });
+    $this->login($this->chatter());
+    $this->get('system/rpg_chat/' . $room->nid);
+    $this->assertStringNotContainsString('rpg-chat-wrapper', $this->content);
   }
 
 }
